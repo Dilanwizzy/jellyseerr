@@ -12,6 +12,7 @@ import { ArrowCircleRightIcon } from '@heroicons/react/outline';
 import type { WatchlistItem } from '@server/interfaces/api/discoverInterfaces';
 import type { MediaResultsResponse } from '@server/interfaces/api/mediaInterfaces';
 import type { RequestResultsResponse } from '@server/interfaces/api/requestInterfaces';
+import type { FlixarrSettings } from '@server/lib/settings';
 import Link from 'next/link';
 import { defineMessages, useIntl } from 'react-intl';
 import useSWR from 'swr';
@@ -29,6 +30,7 @@ const messages = defineMessages({
   emptywatchlist:
     'Media added to your <PlexWatchlistSupportLink>Plex Watchlist</PlexWatchlistSupportLink> will appear here.',
   recommendedMovies: 'Recommended Movies',
+  recommendedSeries: 'Recommended Series',
 });
 
 const Discover = () => {
@@ -56,6 +58,9 @@ const Discover = () => {
   }>(user?.userType === UserType.PLEX ? '/api/v1/discover/watchlist' : null, {
     revalidateOnMount: true,
   });
+
+  const { data: flixarrSettings, error: flixarrError } =
+    useSWR<FlixarrSettings>('/api/v1/settings/flixarr');
 
   return (
     <>
@@ -151,12 +156,24 @@ const Discover = () => {
             />
           </>
         )}
-      <MediaSlider
-        sliderKey="recommended-movies"
-        title={intl.formatMessage(messages.recommendedMovies)}
-        url="/api/v1/discover/movies/recommend"
-        linkUrl="/discover/movies/recommend"
-      />
+
+      {flixarrSettings?.movieRecommend.enabled && !flixarrError && (
+        <MediaSlider
+          sliderKey="recommended-movies"
+          title={intl.formatMessage(messages.recommendedMovies)}
+          url="/api/v1/discover/movies/recommend"
+          linkUrl="/discover/movies/recommend"
+        />
+      )}
+      {flixarrSettings?.tvRecommend.enabled && !flixarrError && (
+        <MediaSlider
+          sliderKey="recommended-series"
+          title={intl.formatMessage(messages.recommendedSeries)}
+          url="/api/v1/discover/series/recommend"
+          linkUrl="/discover/series/recommend"
+        />
+      )}
+
       <MediaSlider
         sliderKey="trending"
         title={intl.formatMessage(messages.trending)}

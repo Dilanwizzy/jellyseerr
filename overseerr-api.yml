@@ -512,6 +512,46 @@ components:
         - is4k
         - enableSeasonFolders
         - isDefault
+    RecommendedSettings:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          nullable: false
+        totalToRecommend:
+          type: number
+          nullable: false
+        discoverBasedOnGenrePercentage:
+          type: number
+          nullable: false
+        discoverBasedOnPopularityPercentage:
+          type: number
+          nullable: false
+        discoverBasedOnWatchedPercentage:
+          type: number
+          nullable: false
+        episodesToPreDownload:
+          type: number
+          nullable: true
+        maxQuota:
+          type: string
+          nullable: false
+          example: "1GB"
+      required:
+        - enabled
+        - totalToRecommend
+        - maxQuota
+    FlixarrSettings:
+      type: object
+      properties:
+        movieRecommend:
+          type: object
+          items:
+            $ref: '#/components/schemas/RecommendedSettings'
+        tvRecommend:
+          type: object
+          items:
+            $ref: '#/components/schemas/RecommendedSettings'
     ServarrTag:
       type: object
       properties:
@@ -2573,6 +2613,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PublicSettings'
+  /settings/flixarr:
+    get:
+      summary: Get Flixarr settings
+      description: Retrieves all flixarr settings in a JSON object.
+      tags:
+        - settings
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlixarrSettings'
+    post:
+      summary: Update Flixarr settings
+      description: Updates Flixarr settings with the provided values.
+      tags:
+        - settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlixarrSettings'
+      responses:
+        '200':
+          description: 'Values were sucessfully updated'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlixarrSettings'
   /settings/jobs:
     get:
       summary: Get scheduled jobs

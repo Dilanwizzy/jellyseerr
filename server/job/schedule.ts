@@ -1,6 +1,6 @@
 import { MediaServerType } from '@server/constants/server';
 import downloadTracker from '@server/lib/downloadtracker';
-import { recommend } from '@server/lib/recommend';
+import { recommend } from '@server/lib/recommend/movies/index';
 import { plexFullScanner, plexRecentScanner } from '@server/lib/scanners/plex';
 import { radarrScanner } from '@server/lib/scanners/radarr';
 import { sonarrScanner } from '@server/lib/scanners/sonarr';
@@ -192,7 +192,7 @@ export const startJobs = (): void => {
       logger.info('Starting scheduled job: Recommend Movies For Admin', {
         label: 'Jobs',
       });
-      recommend.recommendMovie();
+      recommend.recommend();
     }),
   });
 

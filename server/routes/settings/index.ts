@@ -242,6 +242,21 @@ settingsRoutes.post('/plex/sync', (req, res) => {
   return res.status(200).json(plexFullScanner.status());
 });
 
+settingsRoutes.get('/flixarr', (_req, res) => {
+  const settings = getSettings();
+
+  res.status(200).json(settings.flixarr);
+});
+
+settingsRoutes.post('/flixarr', (req, res) => {
+  const settings = getSettings();
+
+  settings.flixarr = merge(settings.flixarr, req.body);
+  settings.save();
+
+  return res.status(200).json(settings.flixarr);
+});
+
 settingsRoutes.get('/jellyfin', (_req, res) => {
   const settings = getSettings();
 

@@ -21,14 +21,19 @@ export interface Region {
 }
 
 export interface RecommendedSettings {
+  enabled: boolean;
   totalToRecommend: number;
-  discoverBasedOnWatchedPercentage: number;
+  discoverBasedOnGenrePercentage: number;
   discoverBasedOnPopularityPercentage: number;
-  discoverBasedOnMostWatchedPercentage: number;
+  discoverBasedOnWatchedPercentage: number;
   episodesToPreDownload?: number;
   maxQuota: string;
 }
 
+export interface FlixarrSettings {
+  movieRecommend: RecommendedSettings;
+  tvRecommend: RecommendedSettings;
+}
 export interface Language {
   iso_639_1: string;
   english_name: string;
@@ -110,8 +115,6 @@ export interface MainSettings {
     movie: Quota;
     tv: Quota;
   };
-  movieRecommend: RecommendedSettings;
-  tvRecommend: RecommendedSettings;
   hideAvailable: boolean;
   localLogin: boolean;
   newPlexLogin: boolean;
@@ -288,6 +291,7 @@ interface AllSettings {
   tautulli: TautulliSettings;
   radarr: RadarrSettings[];
   sonarr: SonarrSettings[];
+  flixarr: FlixarrSettings;
   public: PublicSettings;
   notifications: NotificationSettings;
   jobs: Record<JobId, JobSettings>;
@@ -315,21 +319,6 @@ class Settings {
         defaultQuotas: {
           movie: {},
           tv: {},
-        },
-        movieRecommend: {
-          totalToRecommend: 0,
-          discoverBasedOnPopularityPercentage: 0.3,
-          discoverBasedOnMostWatchedPercentage: 0,
-          discoverBasedOnWatchedPercentage: 0.7,
-          maxQuota: '1GB',
-        },
-        tvRecommend: {
-          totalToRecommend: 0,
-          discoverBasedOnPopularityPercentage: 0.3,
-          discoverBasedOnMostWatchedPercentage: 0,
-          discoverBasedOnWatchedPercentage: 0.7,
-          episodesToPreDownload: 3,
-          maxQuota: '1GB',
         },
         hideAvailable: false,
         localLogin: true,
@@ -360,6 +349,25 @@ class Settings {
       sonarr: [],
       public: {
         initialized: false,
+      },
+      flixarr: {
+        movieRecommend: {
+          enabled: false,
+          totalToRecommend: 0,
+          discoverBasedOnPopularityPercentage: 0.2,
+          discoverBasedOnWatchedPercentage: 0.6,
+          discoverBasedOnGenrePercentage: 0.2,
+          maxQuota: '1GB',
+        },
+        tvRecommend: {
+          enabled: false,
+          totalToRecommend: 0,
+          discoverBasedOnPopularityPercentage: 0.2,
+          discoverBasedOnWatchedPercentage: 0.6,
+          discoverBasedOnGenrePercentage: 0.2,
+          episodesToPreDownload: 3,
+          maxQuota: '1GB',
+        },
       },
       notifications: {
         agents: {
@@ -537,6 +545,14 @@ class Settings {
 
   set sonarr(data: SonarrSettings[]) {
     this.data.sonarr = data;
+  }
+
+  get flixarr(): FlixarrSettings {
+    return this.data.flixarr;
+  }
+
+  set flixarr(data: FlixarrSettings) {
+    this.data.flixarr = data;
   }
 
   get public(): PublicSettings {

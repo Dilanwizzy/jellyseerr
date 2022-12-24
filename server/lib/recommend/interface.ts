@@ -18,4 +18,5 @@ export interface RecommendRequest {
   recentlyWatchedMovies?: Media[];
   minReleaseDate?: string;
   maxReleaseDate?: string;
+  movieId?: number;
 }

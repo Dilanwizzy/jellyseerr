@@ -30,6 +30,7 @@ class Recommend {
         .createQueryBuilder('mediawatched')
         .leftJoinAndSelect('mediawatched.media', 'media')
         .where('mediawatched.playCount > 0')
+        .orderBy('mediawatched.lastPlayDate', 'DESC')
         .getManyAndCount();
 
     const allMedia = await this.mediaRespository.find();
@@ -54,28 +55,20 @@ class Recommend {
       if (index == 3) break;
       const pickedGenre = weightedGenres.genre[index];
       const percentage = pickedGenre.score / totalWeightForTop3Genre;
-      logger.info(
-        `picked ${JSON.stringify(pickedGenre.tmdbId)} ${percentage} Recommend ${
-          settings.main.movieRecommend.totalToRecommend *
-          settings.main.movieRecommend.discoverBasedOnWatchedPercentage
-        }`
-      );
 
-      const moviesBasedOnWatched =
-        await this.moviesRecommendation.discoverNewMoviesBasedOnWatched(
+      const moviesBasedOnGenre =
+        await this.moviesRecommendation.discoverNewMoviesBasedOnGenre(
           mediaDownloaded,
           percentage,
-          settings.main.movieRecommend.totalToRecommend *
-            settings.main.movieRecommend.discoverBasedOnWatchedPercentage,
+          settings.flixarr.movieRecommend.totalToRecommend *
+            settings.flixarr.movieRecommend.discoverBasedOnGenrePercentage,
           {
             page: 1,
             genreId: [pickedGenre.tmdbId ? pickedGenre.tmdbId : 0],
           }
         );
 
-      logger.info(`TOTTAL ${moviesBasedOnWatched.length}`);
-
-      chosenMovies = chosenMovies.concat(moviesBasedOnWatched);
+      chosenMovies = chosenMovies.concat(moviesBasedOnGenre);
 
       for (let index = 0; index < chosenMovies.length; index++) {
         const movie = chosenMovies[index];
@@ -83,7 +76,7 @@ class Recommend {
       }
     }
 
-    logger.info(`${chosenMovies.length}`);
+    logger.info(`BASED ON GENRE ${chosenMovies.length}`);
 
     // // const chosenMovies: TmdbMovieResult[] = moviesBasedOnWatched;
     // for (let index = 0; index < chosenMovies.length; index++) {
@@ -94,8 +87,8 @@ class Recommend {
     const moviesBasedOnPopularity =
       await this.moviesRecommendation.discoverNewMoviesBasedOnPopularity(
         mediaDownloaded,
-        settings.main.movieRecommend.discoverBasedOnPopularityPercentage,
-        settings.main.movieRecommend.totalToRecommend,
+        settings.flixarr.movieRecommend.discoverBasedOnPopularityPercentage,
+        settings.flixarr.movieRecommend.totalToRecommend,
         {
           page: 1,
           genreId: weightedGenres.genre.map((genre) =>
@@ -104,9 +97,93 @@ class Recommend {
         }
       );
 
-    logger.info(`POPULAR ${moviesBasedOnPopularity.length}`);
+    logger.info(`BASED ON POPULARITY ${moviesBasedOnPopularity.length}`);
 
     chosenMovies = chosenMovies.concat(moviesBasedOnPopularity);
+
+    //Movie Based on watched
+    //Start
+    const currentDate = new Date();
+    const aFewMontAgo = new Date(
+      currentDate.setMonth(currentDate.getMonth() - 1)
+    );
+    const mediaWatchedWithinLastFewMonths = mediaWatched[0].filter(
+      (media) => media.lastPlayDate >= aFewMontAgo
+    );
+    const loopThroughMovieIds = async (mediaToRecommend: MediaWatched[]) => {
+      const splitPercentage = 1 / mediaToRecommend.length;
+      const totalToDownload =
+        settings.flixarr.movieRecommend.totalToRecommend *
+        settings.flixarr.movieRecommend.discoverBasedOnWatchedPercentage;
+
+      for (let index = 0; index < mediaToRecommend.length; index++) {
+        const pickedMovie = mediaToRecommend[index];
+        const moviesBasedOnWatched =
+          await this.moviesRecommendation.discoverNewMoviesBasedOnWatched(
+            mediaDownloaded,
+            splitPercentage,
+            totalToDownload,
+            {
+              page: 1,
+              genreId: [0],
+              movieId: pickedMovie.media.tmdbId,
+            }
+          );
+
+        chosenMovies = chosenMovies.concat(moviesBasedOnWatched);
+
+        for (let index = 0; index < chosenMovies.length; index++) {
+          const movie = chosenMovies[index];
+          mediaDownloaded.push(movie.id);
+        }
+      }
+    };
+
+    if (mediaWatchedWithinLastFewMonths.length <= 5) {
+      await loopThroughMovieIds(mediaWatchedWithinLastFewMonths);
+    } else {
+      const result: MediaWatched[] = [];
+      let pickCount = 5;
+
+      const highestRatingItems = mediaWatchedWithinLastFewMonths.filter(
+        (media) => media.rating >= 4
+      );
+      if (highestRatingItems.length <= 2) {
+        result.push(...highestRatingItems);
+        pickCount = -highestRatingItems.length;
+      } else {
+        highestRatingItems.sort(() => Math.random() - 0.5);
+        result.push(...highestRatingItems.slice(0, 2));
+      }
+
+      logger.info(`HIGHEST ${result.length}`);
+
+      const highestPlayCountItems = mediaWatchedWithinLastFewMonths.filter(
+        (media) => media.playCount >= 1 && !result.includes(media)
+      );
+      if (highestPlayCountItems.length <= 2) {
+        result.push(...highestPlayCountItems);
+        pickCount = -highestPlayCountItems.length;
+      } else {
+        highestPlayCountItems.sort((a, b) => b.playCount - a.playCount);
+        result.push(...highestPlayCountItems.slice(0, pickCount - 2));
+      }
+
+      pickCount = -highestPlayCountItems.length;
+
+      const remainingMedia = mediaWatchedWithinLastFewMonths.filter(
+        (media) => !result.includes(media)
+      );
+      remainingMedia.sort(() => Math.random() - 0.5);
+
+      result.push(...remainingMedia.slice(0, pickCount));
+
+      logger.info(`result size ${result.length}`);
+
+      await loopThroughMovieIds(result);
+    }
+
+    /// END
 
     for (let index = 0; index < chosenMovies.length; index++) {
       const movie = chosenMovies[index];

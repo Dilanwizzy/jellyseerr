@@ -53,7 +53,7 @@ const SettingsLayout = ({ children }: SettingsLayoutProps) => {
         },
     {
       text: intl.formatMessage(messages.menuFlixarr),
-      route: '/settings/flixarr',
+      route: '/settings/flixarr/movies',
       regex: /^\/settings\/flixarr/,
     },
     {

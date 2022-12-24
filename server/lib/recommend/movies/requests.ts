@@ -11,7 +11,7 @@ import type {
 } from '@server/lib/recommend/interface';
 import logger from '@server/logger';
 
-class RecommendMovie {
+class RecommendMovieRequests {
   private tmdb: TheMovieDb;
 
   constructor() {
@@ -30,6 +30,28 @@ class RecommendMovie {
       movieRecommendRequest,
       mediaWatchedTmdbIds,
       'RECOMMEND'
+    );
+
+    if (chosenMovies.length > totalToRecommend * percentage) {
+      chosenMovies.sort(() => Math.random() - 0.5);
+      return chosenMovies.slice(0, totalToRecommend * percentage);
+    }
+
+    return chosenMovies;
+  }
+
+  public async discoverNewMoviesBasedOnGenre(
+    mediaWatchedTmdbIds: number[],
+    percentage: number,
+    totalToRecommend: number,
+    movieRecommendRequest: RecommendRequest
+  ): Promise<TmdbMovieResult[]> {
+    const chosenMovies = await this.discoverNewMovies(
+      percentage,
+      totalToRecommend,
+      movieRecommendRequest,
+      mediaWatchedTmdbIds,
+      'GENRE'
     );
 
     if (chosenMovies.length > totalToRecommend * percentage) {
@@ -121,7 +143,7 @@ class RecommendMovie {
       const ignorePages: number[] = [];
       while (totalMoviesPicked < totalOtherPageDiscover) {
         try {
-          const page = await this.selectARandomPageNumber(
+          const page = await this.selectARandomNumberAndIgnoreSomeNumbers(
             currentPage,
             totalPages,
             ignorePages
@@ -172,7 +194,7 @@ class RecommendMovie {
     movieRecommendRequest: RecommendRequest
   ): Promise<TmdbSearchMovieResponse> {
     switch (requestType) {
-      case 'RECOMMEND':
+      case 'GENRE':
         return await this.tmdb.getDiscoverMovies({
           page: movieRecommendRequest.page,
           genres: movieRecommendRequest.genreId,
@@ -185,6 +207,13 @@ class RecommendMovie {
         return await this.tmdb.getMoviePopular({
           page: movieRecommendRequest.page,
         });
+      case 'RECOMMEND':
+        return await this.tmdb.getMovieRecommendations({
+          page: movieRecommendRequest.page,
+          movieId: movieRecommendRequest.movieId
+            ? movieRecommendRequest.movieId
+            : 0,
+        });
       default:
         return await this.tmdb.getMoviePopular({
           page: movieRecommendRequest.page,
@@ -192,7 +221,7 @@ class RecommendMovie {
     }
   }
 
-  private async selectARandomPageNumber(
+  private async selectARandomNumberAndIgnoreSomeNumbers(
     min: number,
     max: number,
     ignore: number[]
@@ -309,4 +338,4 @@ class RecommendMovie {
   }
 }
 
-export default RecommendMovie;
+export default RecommendMovieRequests;

@@ -1,41 +1,51 @@
-import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
-import useSettings from '@app/hooks/useSettings';
+import type { SettingsRoute } from '@app/components/Common/SettingsTabs';
+import SettingsTabs from '@app/components/Common/SettingsTabs';
 import globalMessages from '@app/i18n/globalMessages';
-import type { MainSettings } from '@server/lib/settings';
-import axios from 'axios';
-import { Field, Form, Formik } from 'formik';
-import getConfig from 'next/config';
+import { CameraIcon, FilmIcon } from '@heroicons/react/solid';
 import { defineMessages, useIntl } from 'react-intl';
-import { useToasts } from 'react-toast-notifications';
-import useSWR, { mutate } from 'swr';
 
 const messages = defineMessages({
   flixarr: 'Flixarr',
   flixarrSettings: 'Flixarr Settings',
-  flixarrSettingsDescription: 'Configure Movies and TV Shows Recommendations',
+  flixarrSettingsDescription: 'Configure Movies and Series Recommendations',
   toastSettingsSuccess: 'Flixarr settings saved successfully!',
   toastSettingsFailure: 'Something went wrong while saving settings.',
-  totalToRecommend: 'No. Movies To Recommend',
-  totalToRecommendTip: 'How many movies you would be recommended',
-  maxQuota: 'Max Quota',
-  maxQuotaTip: 'Set the Total Size Quota, use (GB|TB). Set 0 for unlimited',
+  movies: 'Movies',
+  series: 'Series',
 });
 
-const SettingsFlixarr = () => {
-  const { addToast } = useToasts();
-  const intl = useIntl();
-  const {
-    data,
-    error,
-    mutate: revalidate,
-  } = useSWR<MainSettings>('/api/v1/settings/main');
-  const settings = useSettings();
-  const { publicRuntimeConfig } = getConfig();
+type SettingsFlixarrProps = {
+  children: React.ReactNode;
+};
 
-  if (!data && !error) {
-    return <LoadingSpinner />;
-  }
+const SettingsFlixarr = ({ children }: SettingsFlixarrProps) => {
+  const intl = useIntl();
+
+  const settingsRoutes: SettingsRoute[] = [
+    {
+      text: intl.formatMessage(messages.movies),
+      content: (
+        <span className="flex items-center">
+          <FilmIcon className="mr-2 h-4" />
+          {intl.formatMessage(messages.movies)}
+        </span>
+      ),
+      route: '/settings/flixarr/movies',
+      regex: /^\/settings\/flixarr\/movies/,
+    },
+    {
+      text: intl.formatMessage(messages.series),
+      content: (
+        <span className="flex items-center">
+          <CameraIcon className="mr-2 h-4" />
+          {intl.formatMessage(messages.series)}
+        </span>
+      ),
+      route: '/settings/flixarr/series',
+      regex: /^\/settings\/flixarr\/series/,
+    },
+  ];
 
   return (
     <>
@@ -45,89 +55,16 @@ const SettingsFlixarr = () => {
           intl.formatMessage(globalMessages.settings),
         ]}
       />
-
       <div className="mb-6">
-        <h3 className="heading">{intl.formatMessage(messages.flixarr)}</h3>
+        <h3 className="heading">
+          {intl.formatMessage(messages.flixarrSettings)}
+        </h3>
         <p className="description">
           {intl.formatMessage(messages.flixarrSettingsDescription)}
         </p>
       </div>
-
-      <div className="section">
-        <Formik
-          initialValues={{
-            totalToDownload: data?.movieRecommend.totalToRecommend,
-            maxQuota: data?.movieRecommend.maxQuota,
-          }}
-          enableReinitialize
-          onSubmit={async (values) => {
-            try {
-              await axios.post('/api/v1/settings/main', {
-                movieRecommended: values.totalToDownload,
-              });
-
-              mutate('/api/v1/settings/public');
-
-              addToast(intl.formatMessage(messages.toastSettingsSuccess), {
-                autoDismiss: true,
-                appearance: 'success',
-              });
-            } catch (e) {
-              addToast(intl.formatMessage(messages.toastSettingsFailure), {
-                autoDismiss: true,
-                appearance: 'error',
-              });
-            } finally {
-              revalidate();
-            }
-          }}
-        >
-          {({ isSubmitting, values, setFieldValue }) => {
-            return (
-              <Form className="section">
-                <div className="form-row">
-                  <label htmlFor="totalToDownload" className="checkbox-label">
-                    {intl.formatMessage(messages.totalToRecommend)}
-                    <span className="label-tip">
-                      {intl.formatMessage(messages.totalToRecommendTip)}
-                    </span>
-                  </label>
-                  <div className="form-input-area">
-                    <Field
-                      type="text"
-                      id="totalToDownload"
-                      name="totalToDownload"
-                      className="short"
-                      onChange={() => {
-                        setFieldValue('localLogin', !values.totalToDownload);
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="form-row">
-                  <label htmlFor="maxQuota" className="checkbox-label">
-                    {intl.formatMessage(messages.maxQuota)}
-                    <span className="label-tip">
-                      {intl.formatMessage(messages.maxQuotaTip)}
-                    </span>
-                  </label>
-                  <div className="form-input-area">
-                    <Field
-                      type="text"
-                      id="maxQuota"
-                      name="maxQuota"
-                      className="short"
-                      onChange={() => {
-                        setFieldValue('maxQuota', !values.maxQuota);
-                      }}
-                    />
-                  </div>
-                </div>
-              </Form>
-            );
-          }}
-        </Formik>
-      </div>
+      <SettingsTabs tabType="button" settingsRoutes={settingsRoutes} />
+      <div className="section">{children}</div>
     </>
   );
 };
