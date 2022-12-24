@@ -4,6 +4,7 @@ import { sortBy } from 'lodash';
 import type {
   TmdbCollection,
   TmdbExternalIdResponse,
+  TmdbExternalIds,
   TmdbGenre,
   TmdbGenresResult,
   TmdbLanguage,
@@ -39,7 +40,8 @@ interface DiscoverMovieOptions {
   primaryReleaseDateGte?: string;
   primaryReleaseDateLte?: string;
   originalLanguage?: string;
-  genre?: number;
+  // genre?: number;
+  genres?: number[];
   studio?: number;
   sortBy?:
     | 'popularity.asc'
@@ -56,6 +58,7 @@ interface DiscoverMovieOptions {
     | 'vote_average.desc'
     | 'vote_count.asc'
     | 'vote_count.desc';
+  releaseType?: number;
 }
 
 interface DiscoverTvOptions {
@@ -88,7 +91,8 @@ class TheMovieDb extends ExternalAPI {
     super(
       'https://api.themoviedb.org/3',
       {
-        api_key: 'db55323b8d3e4154498498a75642b381',
+        //TODO revert back
+        api_key: '943180e9a03977b7b976bbeca5d4ba6d',
       },
       {
         nodeCache: cacheManager.getCache('tmdb').data,
@@ -327,6 +331,27 @@ class TheMovieDb extends ExternalAPI {
     }
   }
 
+  public async getMoviePopular({
+    page = 1,
+    language = 'en',
+  }: {
+    page?: number;
+    language?: string;
+  }): Promise<TmdbSearchMovieResponse> {
+    try {
+      const data = await this.get<TmdbSearchMovieResponse>(`/movie/popular`, {
+        params: {
+          page,
+          language,
+        },
+      });
+
+      return data;
+    } catch (e) {
+      throw new Error(`[TMDB] Failed to fetch discover movies: ${e.message}`);
+    }
+  }
+
   public async getMovieSimilar({
     movieId,
     page = 1,
@@ -438,8 +463,10 @@ class TheMovieDb extends ExternalAPI {
     primaryReleaseDateGte,
     primaryReleaseDateLte,
     originalLanguage,
-    genre,
+    genres,
+    // genreIds,
     studio,
+    releaseType,
   }: DiscoverMovieOptions = {}): Promise<TmdbSearchMovieResponse> => {
     try {
       const data = await this.get<TmdbSearchMovieResponse>('/discover/movie', {
@@ -452,8 +479,9 @@ class TheMovieDb extends ExternalAPI {
           with_original_language: originalLanguage ?? this.originalLanguage,
           'primary_release_date.gte': primaryReleaseDateGte,
           'primary_release_date.lte': primaryReleaseDateLte,
-          with_genres: genre,
+          with_genres: genres?.slice(0, 3).join(','),
           with_companies: studio,
+          with_release_type: releaseType,
         },
       });
 
@@ -624,6 +652,29 @@ class TheMovieDb extends ExternalAPI {
       return data;
     } catch (e) {
       throw new Error(`[TMDB] Failed to find by external ID: ${e.message}`);
+    }
+  }
+
+  public async getExternalIds({
+    id,
+    language = 'en',
+  }: {
+    id: number;
+    language: string;
+  }): Promise<TmdbExternalIds> {
+    try {
+      const data = await this.get<TmdbExternalIds>(
+        `/movie/${id}/external_ids`,
+        {
+          params: {
+            language,
+          },
+        }
+      );
+
+      return data;
+    } catch (e) {
+      throw new Error(`[TMDB] Failed to find external Ids: ${e.message}`);
     }
   }
 

@@ -33,6 +33,7 @@ export interface JellyfinLibraryItem {
   HasSubtitles: boolean;
   Type: 'Movie' | 'Episode' | 'Season' | 'Series';
   LocationType: 'FileSystem' | 'Offline' | 'Remote' | 'Virtual';
+  ProductionYear?: number;
   SeriesName?: string;
   SeriesId?: string;
   SeasonId?: string;
@@ -41,6 +42,8 @@ export interface JellyfinLibraryItem {
   IndexNumberEnd?: number;
   ParentIndexNumber?: number;
   MediaType: string;
+  Genres?: string[];
+  UserData?: JellyfinUserData;
 }
 
 export interface JellyfinMediaStream {
@@ -74,6 +77,15 @@ export interface JellyfinLibraryItemExtended extends JellyfinLibraryItem {
   Height?: number;
   IsHD?: boolean;
   DateCreated?: string;
+}
+
+export interface JellyfinUserData {
+  PlaybackPositionTicks: number;
+  PlayCount: number;
+  IsFavorite: boolean;
+  Played: boolean;
+  Key: string;
+  LastPlayedDate?: Date;
 }
 
 class JellyfinAPI {

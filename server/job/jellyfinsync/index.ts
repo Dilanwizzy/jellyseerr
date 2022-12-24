@@ -6,6 +6,7 @@ import { MediaStatus, MediaType } from '@server/constants/media';
 import { MediaServerType } from '@server/constants/server';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
+import MediaWatched from '@server/entity/MediaWatched';
 import Season from '@server/entity/Season';
 import { User } from '@server/entity/User';
 import type { Library } from '@server/lib/settings';
@@ -55,12 +56,28 @@ class JobJellyfinSync {
     return existing;
   }
 
+  private async getWatchedExisting(media: Media) {
+    const mediaWatchedRepository = getRepository(MediaWatched);
+
+    const existing = await mediaWatchedRepository
+      .createQueryBuilder('mediawatched')
+      .where(
+        'mediawatched.mediaId = :mediaId and mediawatched.userId = :userId',
+        { mediaId: media.id, userId: 1 }
+      )
+      .getOne();
+
+    return existing;
+  }
+
   private async processMovie(jellyfinitem: JellyfinLibraryItem) {
     const mediaRepository = getRepository(Media);
+    const mediaWatchedRepository = getRepository(MediaWatched);
 
     try {
       const metadata = await this.jfClient.getItemData(jellyfinitem.Id);
       const newMedia = new Media();
+      const newMediaWatched = new MediaWatched();
 
       if (!metadata.Id) {
         logger.debug('No Id metadata for this title. Skipping', {
@@ -101,6 +118,8 @@ class JobJellyfinSync {
         );
 
         if (existing) {
+          const watchedExisting = await this.getWatchedExisting(existing);
+
           let changedExisting = false;
 
           if (
@@ -154,6 +173,21 @@ class JobJellyfinSync {
               `Title already exists and no new media types found ${metadata.Name}`
             );
           }
+
+          /// WATCHED EXISTING
+          if (watchedExisting) {
+            if (metadata.UserData) {
+              watchedExisting.playCount = metadata.UserData?.PlayCount;
+              watchedExisting.rating = metadata.UserData?.IsFavorite ? 5 : 1;
+
+              if (metadata.UserData.LastPlayedDate) {
+                watchedExisting.lastPlayDate = metadata.UserData.LastPlayedDate;
+              }
+            }
+            await mediaWatchedRepository.save(watchedExisting);
+
+            this.log(`Updated Watching Status for ${watchedExisting.id}`);
+          }
         } else {
           newMedia.status =
             hasOtherResolution || (!this.enable4kMovie && has4k)
@@ -173,6 +207,30 @@ class JobJellyfinSync {
             has4k && this.enable4kMovie ? metadata.Id : undefined;
           await mediaRepository.save(newMedia);
           this.log(`Saved ${metadata.Name}`);
+
+          /// WATCHED EXISTING
+          const user = new User();
+          user.id = 1;
+          newMediaWatched.media = newMedia;
+          newMediaWatched.user = user;
+
+          if (metadata.UserData) {
+            newMediaWatched.rating = metadata.UserData.IsFavorite ? 5 : 1;
+            newMediaWatched.playCount = metadata.UserData.PlayCount;
+            metadata.ProductionYear
+              ? (newMediaWatched.releaseYear = metadata.ProductionYear)
+              : undefined;
+
+            metadata.UserData.LastPlayedDate
+              ? (newMediaWatched.lastPlayDate =
+                  metadata.UserData.LastPlayedDate)
+              : undefined;
+            if (metadata.Genres) {
+              newMediaWatched.genres = metadata.Genres?.join(',');
+            }
+          }
+
+          await mediaWatchedRepository.save(newMediaWatched);
         }
       });
     } catch (e) {

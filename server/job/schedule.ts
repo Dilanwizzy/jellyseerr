@@ -1,6 +1,7 @@
 import { MediaServerType } from '@server/constants/server';
 import downloadTracker from '@server/lib/downloadtracker';
 import ImageProxy from '@server/lib/imageproxy';
+import { recommend } from '@server/lib/recommend/movies/index';
 import { plexFullScanner, plexRecentScanner } from '@server/lib/scanners/plex';
 import { radarrScanner } from '@server/lib/scanners/radarr';
 import { sonarrScanner } from '@server/lib/scanners/sonarr';
@@ -195,6 +196,20 @@ export const startJobs = (): void => {
       });
       // Clean TMDB image cache
       ImageProxy.clearCache('tmdb');
+    }),
+  });
+
+  scheduledJobs.push({
+    id: 'recommend-movies',
+    name: 'Recommend Movies For Admin',
+    type: 'process',
+    interval: 'long',
+    cronSchedule: jobs['recommend-movies'].schedule,
+    job: schedule.scheduleJob(jobs['recommend-movies'].schedule, () => {
+      logger.info('Starting scheduled job: Recommend Movies For Admin', {
+        label: 'Jobs',
+      });
+      recommend.recommend();
     }),
   });
 

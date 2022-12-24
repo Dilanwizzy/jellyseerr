@@ -13,6 +13,7 @@ const messages = defineMessages({
   menuUsers: 'Users',
   menuPlexSettings: 'Plex',
   menuJellyfinSettings: '{mediaServerName}',
+  menuFlixarr: 'Flixarr',
   menuServices: 'Services',
   menuNotifications: 'Notifications',
   menuLogs: 'Logs',
@@ -50,6 +51,11 @@ const SettingsLayout = ({ children }: SettingsLayoutProps) => {
           route: '/settings/jellyfin',
           regex: /^\/settings\/jellyfin/,
         },
+    {
+      text: intl.formatMessage(messages.menuFlixarr),
+      route: '/settings/flixarr/movies',
+      regex: /^\/settings\/flixarr/,
+    },
     {
       text: intl.formatMessage(messages.menuServices),
       route: '/settings/services',

@@ -1,6 +1,8 @@
 import { MediaRequestStatus, MediaType } from '@server/constants/media';
 import { UserType } from '@server/constants/user';
 import { getRepository } from '@server/datasource';
+import MediaRecommended from '@server/entity/MediaRecommended';
+import MediaWatched from '@server/entity/MediaWatched';
 import type { QuotaResponse } from '@server/interfaces/api/userInterfaces';
 import PreparedEmail from '@server/lib/email';
 import type { PermissionCheckOptions } from '@server/lib/permissions';
@@ -133,6 +135,20 @@ export class User {
 
   @UpdateDateColumn()
   public updatedAt: Date;
+
+  @OneToMany(() => MediaWatched, (mediaWatched) => mediaWatched.user, {
+    cascade: true,
+  })
+  public mediaWatched: MediaWatched[];
+
+  @OneToMany(
+    () => MediaRecommended,
+    (mediaRecommended) => mediaRecommended.user,
+    {
+      cascade: true,
+    }
+  )
+  public mediaRecommended: MediaRecommended[];
 
   public warnings: string[] = [];
 

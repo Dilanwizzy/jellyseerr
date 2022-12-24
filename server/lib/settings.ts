@@ -20,6 +20,20 @@ export interface Region {
   name?: string;
 }
 
+export interface RecommendedSettings {
+  enabled: boolean;
+  totalToRecommend: number;
+  discoverBasedOnGenrePercentage: number;
+  discoverBasedOnPopularityPercentage: number;
+  discoverBasedOnWatchedPercentage: number;
+  episodesToPreDownload?: number;
+  maxQuota: string;
+}
+
+export interface FlixarrSettings {
+  movieRecommend: RecommendedSettings;
+  tvRecommend: RecommendedSettings;
+}
 export interface Language {
   iso_639_1: string;
   english_name: string;
@@ -264,7 +278,9 @@ export type JobId =
   | 'download-sync-reset'
   | 'jellyfin-recently-added-sync'
   | 'jellyfin-full-sync'
-  | 'image-cache-cleanup';
+  | 'image-cache-cleanup'
+  | 'recommend-movies'
+  | 'auto-download-recommended-movies';
 
 interface AllSettings {
   clientId: string;
@@ -276,6 +292,7 @@ interface AllSettings {
   tautulli: TautulliSettings;
   radarr: RadarrSettings[];
   sonarr: SonarrSettings[];
+  flixarr: FlixarrSettings;
   public: PublicSettings;
   notifications: NotificationSettings;
   jobs: Record<JobId, JobSettings>;
@@ -333,6 +350,25 @@ class Settings {
       sonarr: [],
       public: {
         initialized: false,
+      },
+      flixarr: {
+        movieRecommend: {
+          enabled: false,
+          totalToRecommend: 0,
+          discoverBasedOnPopularityPercentage: 0.2,
+          discoverBasedOnWatchedPercentage: 0.6,
+          discoverBasedOnGenrePercentage: 0.2,
+          maxQuota: '1GB',
+        },
+        tvRecommend: {
+          enabled: false,
+          totalToRecommend: 0,
+          discoverBasedOnPopularityPercentage: 0.2,
+          discoverBasedOnWatchedPercentage: 0.6,
+          discoverBasedOnGenrePercentage: 0.2,
+          episodesToPreDownload: 3,
+          maxQuota: '1GB',
+        },
       },
       notifications: {
         agents: {
@@ -450,6 +486,12 @@ class Settings {
         'image-cache-cleanup': {
           schedule: '0 0 5 * * *',
         },
+        'recommend-movies': {
+          schedule: '0 00 * * 6',
+        },
+        'auto-download-recommended-movies': {
+          schedule: '0 01 * * 6',
+        },
       },
     };
     if (initialSettings) {
@@ -507,6 +549,14 @@ class Settings {
 
   set sonarr(data: SonarrSettings[]) {
     this.data.sonarr = data;
+  }
+
+  get flixarr(): FlixarrSettings {
+    return this.data.flixarr;
+  }
+
+  set flixarr(data: FlixarrSettings) {
+    this.data.flixarr = data;
   }
 
   get public(): PublicSettings {

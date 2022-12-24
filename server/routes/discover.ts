@@ -1,8 +1,10 @@
 import PlexTvAPI from '@server/api/plextv';
 import TheMovieDb from '@server/api/themoviedb';
+import type { TmdbMovieResult } from '@server/api/themoviedb/interfaces';
 import { MediaType } from '@server/constants/media';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
+import MediaRecommended from '@server/entity/MediaRecommended';
 import { User } from '@server/entity/User';
 import type {
   GenreSliderItem,
@@ -53,7 +55,7 @@ discoverRoutes.get('/movies', async (req, res, next) => {
     const data = await tmdb.getDiscoverMovies({
       page: Number(req.query.page),
       language: req.locale ?? (req.query.language as string),
-      genre: req.query.genre ? Number(req.query.genre) : undefined,
+      genres: req.query.genre ? [Number(req.query.genre)] : undefined,
       studio: req.query.studio ? Number(req.query.studio) : undefined,
     });
 
@@ -77,6 +79,61 @@ discoverRoutes.get('/movies', async (req, res, next) => {
     });
   } catch (e) {
     logger.debug('Something went wrong retrieving popular movies', {
+      label: 'API',
+      errorMessage: e.message,
+    });
+    return next({
+      status: 500,
+      message: 'Unable to retrieve popular movies.',
+    });
+  }
+});
+
+discoverRoutes.get('/movies/recommend', async (req, res, next) => {
+  const tmdb = createTmdbWithRegionLanguage(req.user);
+  const mediaRecommend = getRepository(MediaRecommended);
+  const perPage = 35;
+
+  const recommendedMovies: [MediaRecommended[], number] = await mediaRecommend
+    .createQueryBuilder('recommended')
+    .where('recommended.mediaType = :mediaType', { mediaType: 'MOVIE' })
+    .orderBy('recommended.dateAdded', 'ASC')
+    .skip((Number(req.query.page) - 1) * perPage)
+    .take(perPage)
+    .getManyAndCount();
+
+  try {
+    const movieResults = [];
+    for (let index = 0; index < recommendedMovies[0].length; index++) {
+      const recommendedMovie = recommendedMovies[0][index];
+      const movie = await tmdb.getMovie({
+        movieId: recommendedMovie.tmdbId,
+        language: 'en',
+      });
+
+      movieResults.push(movie);
+    }
+
+    const media = await Media.getRelatedMedia(
+      movieResults.map((result) => result.id)
+    );
+
+    return res.status(200).json({
+      page: req.query.page,
+      totalPages: Math.ceil(recommendedMovies[1] / perPage),
+      totalResults: recommendedMovies[0].length,
+      results: movieResults.map((result) =>
+        mapMovieResult(
+          result as unknown as TmdbMovieResult,
+          media.find(
+            (req) =>
+              req.tmdbId === result.id && req.mediaType === MediaType.MOVIE
+          )
+        )
+      ),
+    });
+  } catch (e) {
+    logger.debug('Something went wrong retrieving recommended movies', {
       label: 'API',
       errorMessage: e.message,
     });
@@ -163,7 +220,7 @@ discoverRoutes.get<{ genreId: string }>(
       const data = await tmdb.getDiscoverMovies({
         page: Number(req.query.page),
         language: req.locale ?? (req.query.language as string),
-        genre: Number(req.params.genreId),
+        genres: [Number(req.params.genreId)],
       });
 
       const media = await Media.getRelatedMedia(
@@ -643,7 +700,9 @@ discoverRoutes.get<{ language: string }, GenreSliderItem[]>(
 
       await Promise.all(
         genres.map(async (genre) => {
-          const genreData = await tmdb.getDiscoverMovies({ genre: genre.id });
+          const genreData = await tmdb.getDiscoverMovies({
+            genres: [genre.id],
+          });
 
           mappedGenres.push({
             id: genre.id,
