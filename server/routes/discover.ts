@@ -96,7 +96,10 @@ discoverRoutes.get('/movies/recommend', async (req, res, next) => {
 
   const recommendedMovies: [MediaRecommended[], number] = await mediaRecommend
     .createQueryBuilder('recommended')
-    .where('recommended.mediaType = :mediaType', { mediaType: 'MOVIE' })
+    .where(
+      'recommended.mediaType = :mediaType AND recommended.toRemove = :toRemove',
+      { mediaType: 'MOVIE', toRemove: false }
+    )
     .orderBy('recommended.dateAdded', 'ASC')
     .skip((Number(req.query.page) - 1) * perPage)
     .take(perPage)

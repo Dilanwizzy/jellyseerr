@@ -3,7 +3,7 @@ import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
 import globalMessages from '@app/i18n/globalMessages';
 import { SaveIcon } from '@heroicons/react/solid';
-import type { FlixarrSettings } from '@server/lib/settings';
+import type { FlixarrSettings, SonarrSettings } from '@server/lib/settings';
 import axios from 'axios';
 import { Field, Form, Formik } from 'formik';
 import { defineMessages, useIntl } from 'react-intl';
@@ -32,6 +32,8 @@ const messages = defineMessages({
   watchedPercentageTip:
     'Discovery based on watched and favourites within the last month',
   enable: 'Enable TV Series Recommendations',
+  serviceId: 'Sonarr Profile',
+  serviceIdTip: 'Sonarr profile for flixarr to use',
 });
 
 const FlixarrSeries = () => {
@@ -42,6 +44,10 @@ const FlixarrSeries = () => {
     error,
     mutate: revalidate,
   } = useSWR<FlixarrSettings>('/api/v1/settings/flixarr');
+
+  const { data: sonarrData, error: sonarrError } = useSWR<SonarrSettings[]>(
+    '/api/v1/settings/sonarr'
+  );
 
   if (!data && !error) {
     return <LoadingSpinner />;
@@ -81,6 +87,7 @@ const FlixarrSeries = () => {
               : 0,
             episodesToPreDownload: data?.tvRecommend.episodesToPreDownload,
             enabled: data?.tvRecommend.enabled,
+            serviceId: data?.movieRecommend.serviceId,
           }}
           enableReinitialize
           onSubmit={async (values) => {
@@ -108,6 +115,7 @@ const FlixarrSeries = () => {
                     discoverBasedOnWatchedPercentage:
                       Number(values.watchedPercentage) / 100,
                     episodesToPreDownload: Number(values.episodesToPreDownload),
+                    serviceId: Number(values.serviceId),
                   },
                 });
 
@@ -185,6 +193,33 @@ const FlixarrSeries = () => {
                       name="maxQuota"
                       className="short"
                     />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <label htmlFor="serviceId" className="text-label">
+                    {intl.formatMessage(messages.serviceId)}
+                    <span className="label-tip">
+                      {intl.formatMessage(messages.serviceIdTip)}
+                    </span>
+                  </label>
+                  <div className="form-input-area">
+                    <Field
+                      as="select"
+                      id="serviceId"
+                      name="serviceId"
+                      className="short"
+                    >
+                      {sonarrData && !sonarrError && (
+                        <>
+                          {sonarrData.length > 0 &&
+                            sonarrData.map((sonarr) => (
+                              <option value={sonarr.id} key={sonarr.id}>
+                                {sonarr.name}
+                              </option>
+                            ))}
+                        </>
+                      )}
+                    </Field>
                   </div>
                 </div>
                 <div className="form-row">

@@ -28,6 +28,7 @@ export interface RecommendedSettings {
   discoverBasedOnWatchedPercentage: number;
   episodesToPreDownload?: number;
   maxQuota: string;
+  serviceId: number;
 }
 
 export interface FlixarrSettings {
@@ -279,8 +280,9 @@ export type JobId =
   | 'jellyfin-recently-added-sync'
   | 'jellyfin-full-sync'
   | 'image-cache-cleanup'
-  | 'recommend-movies'
-  | 'auto-download-recommended-movies';
+  | 'flixarr-recommend-movies'
+  | 'flixarr-auto-downloader'
+  | 'flixarr-auto-updater';
 
 interface AllSettings {
   clientId: string;
@@ -359,6 +361,7 @@ class Settings {
           discoverBasedOnWatchedPercentage: 0.6,
           discoverBasedOnGenrePercentage: 0.2,
           maxQuota: '1GB',
+          serviceId: 0,
         },
         tvRecommend: {
           enabled: false,
@@ -368,6 +371,7 @@ class Settings {
           discoverBasedOnGenrePercentage: 0.2,
           episodesToPreDownload: 3,
           maxQuota: '1GB',
+          serviceId: 0,
         },
       },
       notifications: {
@@ -486,11 +490,14 @@ class Settings {
         'image-cache-cleanup': {
           schedule: '0 0 5 * * *',
         },
-        'recommend-movies': {
+        'flixarr-recommend-movies': {
           schedule: '0 00 * * 6',
         },
-        'auto-download-recommended-movies': {
+        'flixarr-auto-downloader': {
           schedule: '0 01 * * 6',
+        },
+        'flixarr-auto-updater': {
+          schedule: '0 */2 * * *',
         },
       },
     };

@@ -5,8 +5,8 @@ import Media from '@server/entity/Media';
 import MediaRecommended from '@server/entity/MediaRecommended';
 import MediaWatched from '@server/entity/MediaWatched';
 import { User } from '@server/entity/User';
-import type { ItemWeights } from '@server/lib/recommend/interface';
-import RecommendMovieRequests from '@server/lib/recommend/movies/requests';
+import type { ItemWeights } from '@server/lib/flixarr/interface';
+import RecommendMovieRequests from '@server/lib/flixarr/movies/requests';
 import type { RecommendedSettings } from '@server/lib/settings';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
@@ -38,7 +38,7 @@ class RecommendMovie {
     );
     const moviesBasedOnPopularity =
       await this.moviesRecommendation.discoverNewMoviesBasedOnPopularity(
-        mediaDownloaded,
+        [],
         movieRecommend.discoverBasedOnPopularityPercentage,
         movieRecommend.totalToRecommend,
         {
@@ -209,7 +209,7 @@ class RecommendMovie {
     const settings = getSettings();
 
     // Delete already recommended movies
-    await this.mediaRecommendedRepository.delete({ keep: false });
+    // await this.mediaRecommendedRepository.delete({ keep: false });
 
     // Media user already watched
     const mediaWatched: [MediaWatched[], number] =
@@ -221,7 +221,14 @@ class RecommendMovie {
         .getManyAndCount();
 
     // All
-    const userMediaInLibrary = await this.mediaRespository.find();
+    let userMediaInLibrary = await this.mediaRespository.find();
+    const mediaFromRecommended = await this.mediaRecommendedRepository.find({
+      where: { keep: false },
+    });
+    userMediaInLibrary = await this.removeRecommendedFromUserMediaList(
+      userMediaInLibrary,
+      mediaFromRecommended
+    );
     const usersMediaTmbdbId = userMediaInLibrary.map((media) => media.tmdbId);
 
     // Weight genres based on what the user has watched and favourited.
@@ -256,10 +263,35 @@ class RecommendMovie {
 
     logger.info(`length ${chosenMoviesToRecommend.length}`);
 
+    //TODO refactor
+    if (mediaFromRecommended.length > 0) {
+      for (let index = 0; index < mediaFromRecommended.length; index++) {
+        const recommendedMedia = mediaFromRecommended[index];
+        let recommendingSameRecommendation = false;
+
+        for (
+          let chosenIndex = 0;
+          chosenIndex < chosenMoviesToRecommend.length;
+          chosenIndex++
+        ) {
+          const chosenMedia = chosenMoviesToRecommend[chosenIndex];
+
+          if (recommendedMedia.tmdbId === chosenMedia.id) {
+            recommendingSameRecommendation = true;
+          }
+        }
+
+        if (!recommendingSameRecommendation) {
+          recommendedMedia.toRemove = true;
+          await this.mediaRecommendedRepository.save(recommendedMedia);
+        }
+      }
+    }
+
     for (let index = 0; index < chosenMoviesToRecommend.length; index++) {
       const movie = chosenMoviesToRecommend[index];
       const alreadyRecommended = await this.mediaRecommendedRepository.findOne({
-        where: { tmdbId: movie.id },
+        where: { tmdbId: movie.id, toRemove: false },
       });
 
       if (alreadyRecommended) {
@@ -285,6 +317,17 @@ class RecommendMovie {
     }
 
     logger.info(`COMPLETED - Recommended : ${chosenMoviesToRecommend.length}`);
+  }
+
+  private async removeRecommendedFromUserMediaList(
+    userMedia: Media[],
+    mediaFromRecommended: MediaRecommended[]
+  ): Promise<Media[]> {
+    return userMedia.filter((media) => {
+      return !mediaFromRecommended.some(
+        (recommendedMedia) => recommendedMedia.tmdbId === media.tmdbId
+      );
+    });
   }
 }
 

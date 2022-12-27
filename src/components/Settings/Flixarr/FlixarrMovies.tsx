@@ -3,7 +3,7 @@ import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
 import globalMessages from '@app/i18n/globalMessages';
 import { SaveIcon } from '@heroicons/react/solid';
-import type { FlixarrSettings } from '@server/lib/settings';
+import type { FlixarrSettings, RadarrSettings } from '@server/lib/settings';
 import axios from 'axios';
 import { Field, Form, Formik } from 'formik';
 import { defineMessages, useIntl } from 'react-intl';
@@ -29,6 +29,8 @@ const messages = defineMessages({
   watchedPercentageTip:
     'Discovery based on watched and favourites within the last month',
   enable: 'Enable Movie Recommendations',
+  serviceId: 'Radarr Profile',
+  serviceIdTip: 'Radarr profile for flixarr to use',
 });
 
 const FlixarrMovies = () => {
@@ -39,6 +41,10 @@ const FlixarrMovies = () => {
     error,
     mutate: revalidate,
   } = useSWR<FlixarrSettings>('/api/v1/settings/flixarr');
+
+  const { data: radarrData, error: radarrError } = useSWR<RadarrSettings[]>(
+    '/api/v1/settings/radarr'
+  );
 
   if (!data && !error) {
     return <LoadingSpinner />;
@@ -77,6 +83,7 @@ const FlixarrMovies = () => {
               ? data?.movieRecommend.discoverBasedOnGenrePercentage * 100
               : 0,
             enabled: data?.movieRecommend.enabled,
+            serviceId: data?.movieRecommend.serviceId,
           }}
           enableReinitialize
           onSubmit={async (values) => {
@@ -103,6 +110,7 @@ const FlixarrMovies = () => {
                       Number(values.popularityPercentage) / 100,
                     discoverBasedOnWatchedPercentage:
                       Number(values.watchedPercentage) / 100,
+                    serviceId: Number(values.serviceId),
                   },
                 });
 
@@ -163,6 +171,33 @@ const FlixarrMovies = () => {
                       name="maxQuota"
                       className="short"
                     />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <label htmlFor="serviceId" className="text-label">
+                    {intl.formatMessage(messages.serviceId)}
+                    <span className="label-tip">
+                      {intl.formatMessage(messages.serviceIdTip)}
+                    </span>
+                  </label>
+                  <div className="form-input-area">
+                    <Field
+                      as="select"
+                      id="serviceId"
+                      name="serviceId"
+                      className="short"
+                    >
+                      {radarrData && !radarrError && (
+                        <>
+                          {radarrData.length > 0 &&
+                            radarrData.map((radarr) => (
+                              <option value={radarr.id} key={radarr.id}>
+                                {radarr.name}
+                              </option>
+                            ))}
+                        </>
+                      )}
+                    </Field>
                   </div>
                 </div>
                 <div className="form-row">

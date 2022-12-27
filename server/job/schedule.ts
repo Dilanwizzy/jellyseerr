@@ -1,7 +1,9 @@
 import { MediaServerType } from '@server/constants/server';
 import downloadTracker from '@server/lib/downloadtracker';
+import { flixarrAutoDownload } from '@server/lib/flixarr/auto-download';
+import { recommend } from '@server/lib/flixarr/movies/index';
+import { flixarrUpdate } from '@server/lib/flixarr/update';
 import ImageProxy from '@server/lib/imageproxy';
-import { recommend } from '@server/lib/recommend/movies/index';
 import { plexFullScanner, plexRecentScanner } from '@server/lib/scanners/plex';
 import { radarrScanner } from '@server/lib/scanners/radarr';
 import { sonarrScanner } from '@server/lib/scanners/sonarr';
@@ -200,17 +202,49 @@ export const startJobs = (): void => {
   });
 
   scheduledJobs.push({
-    id: 'recommend-movies',
+    id: 'flixarr-recommend-movies',
     name: 'Recommend Movies For Admin',
     type: 'process',
     interval: 'long',
-    cronSchedule: jobs['recommend-movies'].schedule,
-    job: schedule.scheduleJob(jobs['recommend-movies'].schedule, () => {
+    cronSchedule: jobs['flixarr-recommend-movies'].schedule,
+    job: schedule.scheduleJob(jobs['flixarr-recommend-movies'].schedule, () => {
       logger.info('Starting scheduled job: Recommend Movies For Admin', {
         label: 'Jobs',
       });
       recommend.recommend();
     }),
+  });
+
+  scheduledJobs.push({
+    id: 'flixarr-auto-downloader',
+    name: 'Flixarr Auto Downloader',
+    type: 'process',
+    interval: 'long',
+    cronSchedule: jobs['flixarr-auto-downloader'].schedule,
+    job: schedule.scheduleJob(jobs['flixarr-auto-downloader'].schedule, () => {
+      logger.info('Starting scheduled job: Flixarr Auto Downloader', {
+        label: 'Jobs',
+      });
+      flixarrAutoDownload.run();
+    }),
+    running: () => flixarrAutoDownload.status().running,
+    cancelFn: () => flixarrAutoDownload.cancel(),
+  });
+
+  scheduledJobs.push({
+    id: 'flixarr-auto-updater',
+    name: 'Flixarr Auto Updater',
+    type: 'process',
+    interval: 'long',
+    cronSchedule: jobs['flixarr-auto-updater'].schedule,
+    job: schedule.scheduleJob(jobs['flixarr-auto-updater'].schedule, () => {
+      logger.info('Starting scheduled job: Flixarr Auto Updater', {
+        label: 'Jobs',
+      });
+      flixarrUpdate.run();
+    }),
+    running: () => flixarrUpdate.status().running,
+    cancelFn: () => flixarrUpdate.cancel(),
   });
 
   logger.info('Scheduled jobs loaded', { label: 'Jobs' });

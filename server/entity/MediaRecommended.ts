@@ -19,7 +19,7 @@ class MediaRecommended {
   public imdbId?: string;
 
   @Column({ nullable: true })
-  public tvdbId?: string;
+  public tvdbId: number;
 
   @Column({ nullable: false })
   public mediaType: 'MOVIE' | 'SERIES';
@@ -29,6 +29,9 @@ class MediaRecommended {
 
   @Column({ type: 'datetime', nullable: false })
   public dateAdded: Date;
+
+  @Column({ default: false, nullable: true })
+  public toRemove: boolean;
 
   @Column({ default: false, nullable: true })
   public keep?: boolean;

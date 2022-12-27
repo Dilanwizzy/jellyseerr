@@ -8,7 +8,7 @@ import type {
   ItemWeights,
   RecommendRequest,
   Weights,
-} from '@server/lib/recommend/interface';
+} from '@server/lib/flixarr/interface';
 import logger from '@server/logger';
 
 class RecommendMovieRequests {

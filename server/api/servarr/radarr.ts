@@ -28,6 +28,7 @@ export interface RadarrMovie {
   qualityProfileId: number;
   added: string;
   hasFile: boolean;
+  sizeOnDisk: number;
 }
 
 class RadarrAPI extends ServarrBase<{ movieId: number }> {
@@ -211,6 +212,26 @@ class RadarrAPI extends ServarrBase<{ movieId: number }> {
           movieId,
         }
       );
+    }
+  }
+
+  public async deleteMovieById(movieId: number): Promise<void> {
+    try {
+      await this.axios.delete(
+        `/movie/${movieId}?deleteFiles=true&addImportExclusion=false`
+      );
+    } catch (e) {
+      throw new Error(`[Radarr] Failed to retrieve movies: ${e.message}`);
+    }
+  }
+
+  public async deleteMovieFromDownloadQueue(queueId: number): Promise<void> {
+    try {
+      await this.axios.delete(
+        `/queue/${queueId}?removeFromClient=true&blocklist=false`
+      );
+    } catch (e) {
+      throw new Error(`[Radarr] Failed to retrieve movies: ${e.message}`);
     }
   }
 }
